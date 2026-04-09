@@ -1,0 +1,114 @@
+# arbstr node — full-stack inference marketplace
+#
+# Services:
+#   core   — arbstr routing engine (Rust)
+#   vault  — arbstr treasury service (TypeScript)
+#   lnd    — Lightning Network daemon
+#   mint   — Nutshell Cashu mint (self-hosted)
+#
+# Usage:
+#   cp .env.example .env           # fill in secrets
+#   docker compose up -d           # start all services
+#   docker compose logs -f core    # follow core logs
+#   docker compose down            # stop all services
+
+services:
+  # Lightning Network daemon (regtest for development)
+  lnd:
+    image: lightninglabs/lnd:v0.18.4-beta
+    command:
+      - --bitcoin.active
+      - --bitcoin.regtest
+      - --bitcoin.node=neutrino
+      - --noseedbackup
+      - --restlisten=0.0.0.0:8080
+      - --rpclisten=0.0.0.0:10009
+    ports:
+      - "10009:10009"  # gRPC
+      - "8180:8080"    # REST
+    volumes:
+      - lnd-data:/root/.lnd
+    healthcheck:
+      test: ["CMD", "lncli", "--network=regtest", "getinfo"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # Cashu mint (self-hosted Nutshell)
+  mint:
+    image: cashubtc/nutshell:0.16.3
+    environment:
+      - MINT_BACKEND_BOLT11_SAT=FakeWallet
+      - MINT_LISTEN_HOST=0.0.0.0
+      - MINT_LISTEN_PORT=3338
+      - MINT_PRIVATE_KEY=${MINT_PRIVATE_KEY:-supersecretprivatekey}
+    ports:
+      - "3338:3338"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3338/v1/info"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # arbstr vault — treasury service (agent accounts, payments, policy)
+  vault:
+    build:
+      context: ./vault
+      dockerfile: Dockerfile
+    environment:
+      - PORT=3000
+      - DATABASE_PATH=/data/vault.db
+      - WALLET_BACKEND=auto
+      - LND_HOST=lnd
+      - LND_PORT=10009
+      - LND_CERT_BASE64=${LND_CERT_BASE64:-}
+      - LND_MACAROON_BASE64=${LND_MACAROON_BASE64:-}
+      - CASHU_MINT_URL=http://mint:3338
+      - CASHU_THRESHOLD_MSAT=${CASHU_THRESHOLD_MSAT:-1000000}
+      - VAULTWARDEN_ADMIN_TOKEN=${VAULT_ADMIN_TOKEN}
+      - VAULT_INTERNAL_TOKEN=${VAULT_INTERNAL_TOKEN}
+    ports:
+      - "3000:3000"
+    volumes:
+      - vault-data:/data
+    depends_on:
+      lnd:
+        condition: service_healthy
+      mint:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # arbstr core — routing engine
+  core:
+    build:
+      context: ./core
+      dockerfile: Dockerfile
+    environment:
+      - RUST_LOG=${RUST_LOG:-arbstr=info}
+      - ARBSTR_CONFIG=/config/config.toml
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./config.toml:/config/config.toml:ro
+      - core-data:/data
+    depends_on:
+      vault:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  lnd-data:
+  vault-data:
+  core-data:

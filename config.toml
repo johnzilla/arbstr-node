@@ -1,0 +1,37 @@
+# arbstr core configuration — used by the core service in docker compose
+# See https://github.com/johnzilla/arbstr for full config reference
+
+[server]
+listen = "0.0.0.0:8080"
+
+[database]
+path = "/data/arbstr.db"
+
+# Vault treasury integration
+[vault]
+url = "http://vault:3000"
+internal_token = "${VAULT_INTERNAL_TOKEN}"
+default_reserve_tokens = 4096
+pending_threshold = 100
+
+# Add your providers below
+# [[providers]]
+# name = "mesh-local"
+# url = "http://host.docker.internal:9337/v1"
+# models = ["Qwen3-32B"]
+# tier = "local"
+# input_rate = 5
+# output_rate = 15
+
+# [[providers]]
+# name = "routstr"
+# url = "https://api.routstr.com/v1"
+# api_key = "${ROUTSTR_API_KEY}"
+# models = ["gpt-4o", "claude-3.5-sonnet"]
+# tier = "frontier"
+# input_rate = 10
+# output_rate = 30
+# base_fee = 1
+
+[policies]
+default_strategy = "cheapest"
