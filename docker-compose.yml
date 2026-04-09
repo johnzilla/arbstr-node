@@ -15,7 +15,7 @@
 services:
   # Lightning Network daemon (regtest for development)
   lnd:
-    image: lightninglabs/lnd:v0.18.4-beta
+    image: lightninglabs/lnd:v0.20.1-beta
     command:
       - --bitcoin.active
       - --bitcoin.regtest
@@ -37,7 +37,7 @@ services:
 
   # Cashu mint (self-hosted Nutshell)
   mint:
-    image: cashubtc/nutshell:0.16.3
+    image: cashubtc/nutshell:0.20.0
     environment:
       - MINT_BACKEND_BOLT11_SAT=FakeWallet
       - MINT_LISTEN_HOST=0.0.0.0
@@ -67,7 +67,7 @@ services:
       - LND_MACAROON_BASE64=${LND_MACAROON_BASE64:-}
       - CASHU_MINT_URL=http://mint:3338
       - CASHU_THRESHOLD_MSAT=${CASHU_THRESHOLD_MSAT:-1000000}
-      - VAULTWARDEN_ADMIN_TOKEN=${VAULT_ADMIN_TOKEN}
+      - VAULT_ADMIN_TOKEN=${VAULT_ADMIN_TOKEN}
       - VAULT_INTERNAL_TOKEN=${VAULT_INTERNAL_TOKEN}
     ports:
       - "3000:3000"
@@ -87,17 +87,18 @@ services:
 
   # arbstr core — routing engine
   core:
-    build:
-      context: ./core
-      dockerfile: Dockerfile
+    image: ghcr.io/johnzilla/arbstr:latest
     environment:
       - RUST_LOG=${RUST_LOG:-arbstr=info}
       - ARBSTR_CONFIG=/config/config.toml
+      - VAULT_INTERNAL_TOKEN=${VAULT_INTERNAL_TOKEN}
     ports:
       - "8080:8080"
     volumes:
       - ./config.toml:/config/config.toml:ro
       - core-data:/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       vault:
         condition: service_healthy
