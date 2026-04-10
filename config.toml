@@ -15,13 +15,16 @@ default_reserve_tokens = 4096
 pending_threshold = 100
 
 # Add your providers below
+
+# mesh-llm local inference (uncomment when mesh-llm is running on host)
+# Models are auto-discovered from mesh-llm on startup -- no need to list them manually.
 # [[providers]]
 # name = "mesh-local"
 # url = "http://host.docker.internal:9337/v1"
-# models = ["Qwen3-32B"]
+# auto_discover = true
 # tier = "local"
-# input_rate = 5
-# output_rate = 15
+# input_rate = 0
+# output_rate = 0
 
 # [[providers]]
 # name = "routstr"
@@ -29,6 +32,7 @@ pending_threshold = 100
 # api_key = "${ROUTSTR_API_KEY}"
 # models = ["gpt-4o", "claude-3.5-sonnet"]
 # tier = "frontier"
+# auto_discover = false
 # input_rate = 10
 # output_rate = 30
 # base_fee = 1
