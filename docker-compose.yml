@@ -38,6 +38,7 @@ services:
   # Cashu mint (self-hosted Nutshell)
   mint:
     image: cashubtc/nutshell:0.20.0
+    command: ["poetry", "run", "mint"]
     environment:
       - MINT_BACKEND_BOLT11_SAT=FakeWallet
       - MINT_LISTEN_HOST=0.0.0.0
@@ -60,7 +61,7 @@ services:
     environment:
       - PORT=3000
       - DATABASE_PATH=/data/vault.db
-      - WALLET_BACKEND=auto
+      - WALLET_BACKEND=${WALLET_BACKEND:-simulated}
       - LND_HOST=lnd
       - LND_PORT=10009
       - LND_CERT_BASE64=${LND_CERT_BASE64:-}
@@ -70,7 +71,7 @@ services:
       - VAULT_ADMIN_TOKEN=${VAULT_ADMIN_TOKEN}
       - VAULT_INTERNAL_TOKEN=${VAULT_INTERNAL_TOKEN}
     ports:
-      - "3000:3000"
+      - "3010:3000"
     volumes:
       - vault-data:/data
     depends_on:
