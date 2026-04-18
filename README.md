@@ -19,17 +19,17 @@ One `docker compose up` brings up the complete stack: routing engine, treasury, 
 
 ## Services
 
-| Service | Port | Description |
-|---------|------|-------------|
+| Service | Host port | Description |
+|---------|-----------|-------------|
 | **core** | 8080 | [arbstr](https://github.com/johnzilla/arbstr) routing engine — OpenAI-compatible proxy with cost/latency/capability arbitrage |
-| **vault** | 3000 | [arbstr-vault](https://github.com/johnzilla/arbstr-vault) treasury — agent sub-accounts, Cashu + Lightning payment rails, policy enforcement, audit log |
-| **lnd** | 10009 | Lightning Network daemon |
+| **vault** | 3010 | [arbstr-vault](https://github.com/johnzilla/arbstr-vault) treasury — agent sub-accounts, Cashu + Lightning payment rails, policy enforcement, audit log (container port 3000 remapped to host 3010) |
+| **lnd** | 10009 (gRPC), 8180 (REST) | Lightning Network daemon |
 | **mint** | 3338 | Nutshell Cashu mint (self-hosted) |
 
 ## Quick Start
 
 ```bash
-git clone https://github.com/johnzilla/arbstr-node.git
+git clone --recurse-submodules https://github.com/johnzilla/arbstr-node.git
 cd arbstr-node
 
 # Configure
@@ -43,7 +43,7 @@ docker compose up -d
 
 # Verify
 curl http://localhost:8080/health
-curl http://localhost:3000/health
+curl http://localhost:3010/health
 ```
 
 Point any OpenAI-compatible client at `http://localhost:8080`:

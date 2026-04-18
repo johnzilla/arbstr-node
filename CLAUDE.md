@@ -42,7 +42,7 @@ docker compose restart core          # pick up config.toml edits (mounted read-o
 docker compose up core               # free-proxy mode: run core alone, no vault
 ```
 
-Health probes: `curl localhost:8080/health` (core), `curl localhost:3000/health` (vault, exposed on host port `3010`).
+Health probes: `curl localhost:8080/health` (core), `curl localhost:3010/health` (vault — compose remaps host 3010 → container 3000).
 
 ### Vault development (cd vault/)
 
