@@ -111,6 +111,10 @@ To run arbstr core standalone without billing, remove the `[vault]` section from
 docker compose up core
 ```
 
+## Working on this repo
+
+See [`CLAUDE.md`](./CLAUDE.md) for architecture notes, the submodule workflow, and common commands — written for agents but useful for human contributors too.
+
 ## Related
 
 - [arbstr](https://github.com/johnzilla/arbstr) — Routing engine
