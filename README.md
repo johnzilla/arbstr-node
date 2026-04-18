@@ -4,6 +4,19 @@ Full-stack deployment of the [arbstr](https://arbstr.com) inference marketplace.
 
 One `docker compose up` brings up the complete stack: routing engine, treasury, Lightning, and Cashu mint.
 
+> [!CAUTION]
+> **DANGER: Do Not Run This as a Production Lightning Node**
+>
+> This project is experimental and under active development. It is **not hardened, audited, or production-ready**.
+>
+> Running a Lightning node involves **real financial risk**. Misconfiguration, bugs, or incomplete understanding can result in **permanent loss of funds**.
+>
+> Do **not** use this software with real Bitcoin unless you fully understand the Lightning Network, have reviewed the code, and are prepared to lose all funds involved.
+>
+> For experimentation, use **testnet, signet, or regtest only**.
+>
+> **You are solely responsible for any loss of funds.**
+
 ## Services
 
 | Service | Port | Description |
