@@ -7,11 +7,28 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **meta-repo** that composes a full-stack inference marketplace from four services. Only one of them has source here:
 
 - `./` (root) — `docker-compose.yml`, `config.toml` (arbstr core config), `.env.example`. Orchestration only.
-- `./vault/` — vendored copy of [`arbstr-vault`](https://github.com/johnzilla/arbstr-vault) (Node.js/TypeScript/Fastify treasury service). This is where nearly all code changes happen.
+- `./vault/` — **git submodule** of [`arbstr-vault`](https://github.com/johnzilla/arbstr-vault) (Node.js/TypeScript/Fastify treasury service). This is where nearly all service code changes happen. **Commits to vault code go to the `arbstr-vault` repo, not this one.** This repo only records the pinned commit SHA via `.gitmodules`.
 - **core** — pulled as `ghcr.io/johnzilla/arbstr:latest`. Rust routing engine. Source lives in [`johnzilla/arbstr`](https://github.com/johnzilla/arbstr), **not in this repo**. Don't look for Rust source here.
 - **lnd** / **mint** — third-party images (`lightninglabs/lnd`, `cashubtc/nutshell`).
 
 The untracked `vault/` in the parent directory (`/home/john/vault/projects/`) is unrelated — it's the user's personal projects vault, not this repo's `./vault/`.
+
+### Submodule workflow
+
+Fresh clone must init submodules or vault will be empty:
+```bash
+git clone --recurse-submodules <repo>
+# or, after a plain clone:
+git submodule update --init
+```
+
+Bump vault to a newer upstream commit:
+```bash
+git submodule update --remote vault
+git add vault && git commit -m "build: bump vault submodule"
+```
+
+Working on vault code: `cd vault`, make edits, commit & push to `arbstr-vault` (origin is already set). Then back at the root, `git add vault` + commit to record the new pinned SHA here.
 
 ## Common commands
 
