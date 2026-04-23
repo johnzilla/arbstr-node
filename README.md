@@ -26,6 +26,10 @@ One `docker compose up` brings up the complete stack: routing engine, treasury, 
 | **lnd** | 10009 (gRPC), 8180 (REST) | Lightning Network daemon |
 | **mint** | 3338 | Nutshell Cashu mint (self-hosted) |
 
+## FAQ
+
+[FAQ](FAQ.md) 
+
 ## Quick Start
 
 ```bash
