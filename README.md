@@ -40,13 +40,15 @@ cd arbstr-node
 cp .env.example .env
 # Edit .env — set VAULT_ADMIN_TOKEN and VAULT_INTERNAL_TOKEN
 
-# Edit config.toml — add your providers (mesh-llm, Routstr, etc.)
+# Edit config.toml — add providers and optionally enable [tokenstats]
+# Edit .env — set vault secrets; optionally OPENROUTER_API_KEY for live market routes
 
 # Start
 docker compose up -d
 
 # Verify
 curl http://localhost:8080/health
+curl http://localhost:8080/providers   # routable providers + market.skipped hints
 curl http://localhost:3010/health
 ```
 
@@ -67,7 +69,7 @@ curl http://localhost:8080/v1/chat/completions \
 Your App ──> arbstr core ──> arbstr vault (debit buyer)
                   │
                   ├──> mesh-llm node (local)
-                  ├──> Routstr (marketplace)
+                  ├──> Routstr / OpenRouter (via static config or tokenstats)
                   └──> any OpenAI-compatible endpoint
                   │
              arbstr vault (credit seller) ──> Lightning payout
@@ -75,7 +77,7 @@ Your App ──> arbstr core ──> arbstr vault (debit buyer)
 
 1. **Request arrives** at arbstr core (port 8080)
 2. **Vault debits** the buyer's agent account (reserve pattern)
-3. **Core routes** to the cheapest qualified provider
+3. **Core routes** to the cheapest qualified **routable** provider (static config and/or live tokenstats quotes)
 4. **Response streams** back to the client
 5. **Vault settles** actual cost, refunds any overage
 
@@ -90,22 +92,50 @@ Your App ──> arbstr core ──> arbstr vault (debit buyer)
 | `MINT_PRIVATE_KEY` | No | Cashu mint key (auto-generated if unset) |
 | `CASHU_THRESHOLD_MSAT` | No | Below: Cashu (instant). Above: Lightning. Default 1M msats |
 | `RUST_LOG` | No | Core log level. Default `arbstr=info` |
+| `OPENROUTER_API_KEY` | No | For `[tokenstats.keys] openrouter` / OpenRouter routes |
+| `ROUTSTR_API_KEY` | No | Cashu or API key for a static Routstr provider |
+
+### Rates (sats per 1M tokens)
+
+Core prices providers in **sats per 1 million tokens** (RIP-05 / tokenstats).  
+Legacy per-1k configs: multiply by 1000 (e.g. `10` sats/1k → `10000` sats/1M).
 
 ### Providers (`config.toml`)
 
-Add providers to `config.toml`. Each provider needs a URL, model list, tier, and pricing:
+Static providers are always available. Each needs a URL, models (or `auto_discover`), tier, and rates:
 
 ```toml
 [[providers]]
 name = "mesh-local"
 url = "http://host.docker.internal:9337/v1"
-models = ["Qwen3-32B"]
-tier = "local"           # local | standard | frontier
-input_rate = 5           # sats per 1k input tokens
-output_rate = 15         # sats per 1k output tokens
+auto_discover = true
+tier = "local"              # local | standard | frontier
+input_rate = 0              # sats per 1M input tokens
+output_rate = 0             # sats per 1M output tokens
 ```
 
-See the [arbstr config reference](https://github.com/johnzilla/arbstr#configuration) for full options including policies, rate limiting, and auth.
+### Live market feed (`[tokenstats]`) — optional, recommended
+
+Uncomment the `[tokenstats]` block in `config.toml` to poll [tokenstats](https://tokenstats.ai) for multi-source quotes (OpenRouter, Routstr, …). Live pricing refreshes on an interval; market endpoints are **only routable when a key is configured**.
+
+```toml
+[tokenstats]
+url = "https://tokenstats.ai"
+poll_interval_secs = 60
+
+[tokenstats.keys]
+openrouter = "${OPENROUTER_API_KEY}"
+# "node-provider-id" = "${CASHU_OR_API_KEY}"
+```
+
+Inspect routing readiness:
+
+```bash
+curl -s http://localhost:8080/providers | jq '.market'
+# skipped[] explains missing_api_key, low_reliability, stale_quotes, …
+```
+
+Full options (policies, rate limiting, auth, vault): [arbstr core README](https://github.com/johnzilla/arbstr#configuration).
 
 ## Without Vault (Free Proxy Mode)
 

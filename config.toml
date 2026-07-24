@@ -1,5 +1,5 @@
 # arbstr core configuration — used by the core service in docker compose
-# See https://github.com/johnzilla/arbstr for full config reference
+# Full reference: https://github.com/johnzilla/arbstr (config.example.toml)
 
 [server]
 listen = "0.0.0.0:8080"
@@ -7,17 +7,34 @@ listen = "0.0.0.0:8080"
 [database]
 path = "/data/arbstr.db"
 
-# Vault treasury integration
+# Vault treasury integration (required for full stack; omit for free-proxy mode)
 [vault]
 url = "http://vault:3000"
 internal_token = "${VAULT_INTERNAL_TOKEN}"
 default_reserve_tokens = 4096
 pending_threshold = 100
 
-# Add your providers below
+# tokenstats market feed (optional but recommended)
+# Polls live multi-source quotes; rates are sats per 1M tokens (RIP-05).
+# Market sources without a key appear under GET /providers → market.skipped.
+# [tokenstats]
+# url = "https://tokenstats.ai"
+# poll_interval_secs = 60
+# min_reliability = 0.5
+# stale_after_secs = 600
+# blend_ratio = 3.0
+# # source = "routstr"   # optional filter; omit = all sources
+# [tokenstats.keys]
+# openrouter = "${OPENROUTER_API_KEY}"
+# # "node-provider-id" = "${CASHU_OR_API_KEY}"
+
+# ---------------------------------------------------------------------------
+# Static providers (always available). Rates are sats per **1M** tokens.
+# Legacy per-1k configs: multiply by 1000 (e.g. 10 sats/1k → 10000 sats/1M).
+# ---------------------------------------------------------------------------
 
 # mesh-llm local inference (uncomment when mesh-llm is running on host)
-# Models are auto-discovered from mesh-llm on startup -- no need to list them manually.
+# Models are auto-discovered from mesh-llm on startup.
 # [[providers]]
 # name = "mesh-local"
 # url = "http://host.docker.internal:9337/v1"
@@ -26,6 +43,7 @@ pending_threshold = 100
 # input_rate = 0
 # output_rate = 0
 
+# Static Routstr (or any OpenAI-compatible) provider
 # [[providers]]
 # name = "routstr"
 # url = "https://api.routstr.com/v1"
@@ -33,8 +51,8 @@ pending_threshold = 100
 # models = ["gpt-4o", "claude-3.5-sonnet"]
 # tier = "frontier"
 # auto_discover = false
-# input_rate = 10
-# output_rate = 30
+# input_rate = 10000   # sats per 1M input tokens
+# output_rate = 30000  # sats per 1M output tokens
 # base_fee = 1
 
 [policies]

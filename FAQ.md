@@ -20,10 +20,21 @@ One `docker compose up` gives you a complete local or self-hosted inference rout
 
 It turns your local machine (or server) into a smart proxy that:
 - Accepts OpenAI-compatible requests
-- Automatically routes each request to the cheapest suitable provider (local models, Routstr marketplace, or custom endpoints)
+- Automatically routes each request to the cheapest suitable **routable** provider (local models, Routstr/OpenRouter via config or live [tokenstats](https://tokenstats.ai), or custom endpoints)
+- Prices in **sats per 1M tokens** (RIP-05); optional live market feed for multi-source quotes
 - Handles payment reservation, settlement, and payouts in Bitcoin sats (via Lightning and Cashu)
 
 Perfect for running your own mini inference marketplace or just getting cheap + private LLM access.
+
+</details>
+
+<details>
+<summary>What is tokenstats and do I need it?</summary>
+
+**Optional but recommended.** [tokenstats](https://tokenstats.ai) is a live inference price board. When you enable `[tokenstats]` in `config.toml`, arbstr core polls it and can route to market providers that have keys in `[tokenstats.keys]`.
+
+Without it, only static `[[providers]]` in `config.toml` are used.  
+`GET /providers` shows routable providers and why market sources were skipped (e.g. missing API key).
 
 </details>
 
@@ -46,3 +57,8 @@ cd arbstr-node
 cp .env.example .env
 # Edit .env and config.toml
 docker compose up -d
+```
+
+See the [README](./README.md) for full configuration, tokenstats setup, and free-proxy mode.
+
+</details>

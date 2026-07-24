@@ -77,7 +77,7 @@ client → core:8080 ──(reserve)──► vault:3000 ──► LND / Nutshel
 
 1. Request hits **core** (OpenAI-compatible proxy, port 8080).
 2. Core calls **vault** `/internal/reserve` to debit buyer's agent balance (default 4096 tokens — see `[vault]` in `config.toml`).
-3. Core picks cheapest qualified provider from `config.toml` `[[providers]]`.
+3. Core picks cheapest qualified **routable** provider from static `[[providers]]` and/or live `[tokenstats]` quotes (rates in **sats per 1M** tokens). Market sources need keys in `[tokenstats.keys]`; see `GET /providers` → `market.skipped`.
 4. Response streams back; core calls `/internal/settle` (actual cost) or `/internal/release` (unused).
 5. Seller payout goes back through vault to Lightning.
 
