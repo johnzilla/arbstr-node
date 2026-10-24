@@ -38,10 +38,11 @@ cd arbstr-node
 
 # Configure
 cp .env.example .env
-# Edit .env — set VAULT_ADMIN_TOKEN and VAULT_INTERNAL_TOKEN
-
-# Edit config.toml — add providers and optionally enable [tokenstats]
-# Edit .env — set vault secrets; optionally OPENROUTER_API_KEY for live market routes
+# Edit .env:
+#   VAULT_ADMIN_TOKEN, VAULT_INTERNAL_TOKEN — generate each with: openssl rand -hex 32
+#   ARBSTR_ANTHROPIC_API_KEY — key for the Anthropic provider in config.toml
+#   MINT_PRIVATE_KEY — replace the placeholder
+# Optionally edit config.toml to add providers or enable [tokenstats]
 
 # Start
 docker compose up -d
@@ -52,34 +53,62 @@ curl http://localhost:8080/providers   # routable providers + market.skipped hin
 curl http://localhost:3010/health
 ```
 
-Point any OpenAI-compatible client at `http://localhost:8080`:
+The stack runs with `WALLET_BACKEND=simulated` by default: balances are tracked in vault's ledger, but no real funds move.
+
+### Create an agent
+
+Every request is billed to an agent account in vault. Create one, fund it, and give it spending limits. New agents get a deny-all policy, so requests are refused until you set one.
+
+```bash
+ADMIN="Authorization: Bearer $VAULT_ADMIN_TOKEN"   # value from .env
+
+# Register — returns agent_id and token (the token is shown once; keep it)
+curl -s http://localhost:3010/agents -H "$ADMIN" -H 'Content-Type: application/json' \
+  -d '{"name": "my-agent"}'
+
+# Deposit 100,000 sats (simulated)
+curl -s http://localhost:3010/agents/<agent_id>/deposit -H "$ADMIN" -H 'Content-Type: application/json' \
+  -d '{"amount_msat": 100000000}'
+
+# Allow up to 50 sats per request and 1,000 sats per day
+curl -s -X PATCH http://localhost:3010/operator/agents/<agent_id>/policy -H "$ADMIN" -H 'Content-Type: application/json' \
+  -d '{"max_transaction_msat": 50000, "daily_limit_msat": 1000000}'
+```
+
+### Send a request
+
+Point any OpenAI-compatible client at `http://localhost:8080`, using the agent's token as the API key:
 
 ```bash
 curl http://localhost:8080/v1/chat/completions \
+  -H "Authorization: Bearer <agent token>" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "gpt-4o",
+    "model": "claude-sonnet-5-5",
+    "max_tokens": 200,
     "messages": [{"role": "user", "content": "Hello!"}]
   }'
 ```
 
+Set `max_tokens`. Without it, core reserves for 4,096 output tokens at frontier rates, which can exceed the agent's per-request limit. A request the policy refuses returns `403` with an `error.reason` such as `exceeds_max_transaction` or `exceeds_daily_limit`.
+
 ## How It Works
 
 ```
-Your App ──> arbstr core ──> arbstr vault (debit buyer)
-                  │
+Your App ──> arbstr core ──(reserve)──> arbstr vault (agent account)
+                  │       <─(settle / release)─
                   ├──> mesh-llm node (local)
-                  ├──> Routstr / OpenRouter (via static config or tokenstats)
+                  ├──> Anthropic, Routstr, OpenRouter (static config or tokenstats)
                   └──> any OpenAI-compatible endpoint
-                  │
-             arbstr vault (credit seller) ──> Lightning payout
 ```
 
-1. **Request arrives** at arbstr core (port 8080)
-2. **Vault debits** the buyer's agent account (reserve pattern)
-3. **Core routes** to the cheapest qualified **routable** provider (static config and/or live tokenstats quotes)
-4. **Response streams** back to the client
-5. **Vault settles** actual cost, refunds any overage
+1. **Request arrives** at arbstr core (port 8080) with the agent's bearer token.
+2. **Vault reserves** the estimated cost against the agent's balance, after checking its policy (per-request and daily limits).
+3. **Core routes** to the cheapest qualified **routable** provider (static config and/or live tokenstats quotes).
+4. **Response streams** back to the client.
+5. **Vault settles** the actual cost and refunds the rest of the reservation. If the provider fails, core releases it instead.
+
+If core never settles a reservation (for example, it crashed mid-request), vault releases it after 15 minutes. Paying providers out of collected funds is not built yet.
 
 ## Configuration
 
@@ -88,8 +117,11 @@ Your App ──> arbstr core ──> arbstr vault (debit buyer)
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `VAULT_ADMIN_TOKEN` | Yes | Operator admin token for vault (min 32 chars) |
-| `VAULT_INTERNAL_TOKEN` | Yes | Shared secret between core and vault |
-| `MINT_PRIVATE_KEY` | No | Cashu mint key (auto-generated if unset) |
+| `VAULT_INTERNAL_TOKEN` | Yes | Shared secret between core and vault (min 32 chars) |
+| `ARBSTR_ANTHROPIC_API_KEY` | For Anthropic | Key for the `anthropic` provider in `config.toml` |
+| `MINT_PRIVATE_KEY` | No | Cashu mint key. Defaults to an insecure placeholder; set your own |
+| `WALLET_BACKEND` | No | Vault payment rail: `simulated` (default), `lightning`, `cashu`, or `auto` |
+| `LND_CERT_BASE64` / `LND_MACAROON_BASE64` | If `lightning`/`auto` | LND credentials for vault |
 | `CASHU_THRESHOLD_MSAT` | No | Below: Cashu (instant). Above: Lightning. Default 1M msats |
 | `RUST_LOG` | No | Core log level. Default `arbstr=info` |
 | `OPENROUTER_API_KEY` | No | For `[tokenstats.keys] openrouter` / OpenRouter routes |
@@ -102,16 +134,30 @@ Legacy per-1k configs: multiply by 1000 (e.g. `10` sats/1k → `10000` sats/1M).
 
 ### Providers (`config.toml`)
 
-Static providers are always available. Each needs a URL, models (or `auto_discover`), tier, and rates:
+Static providers are always available. Each is an OpenAI-compatible endpoint and needs a URL, models (or `auto_discover`), tier, and rates. The shipped `config.toml` has one active provider, Anthropic:
+
+```toml
+[[providers]]
+name = "anthropic"
+url = "https://api.anthropic.com/v1"
+api_key = "${ARBSTR_ANTHROPIC_API_KEY}"
+models = ["claude-sonnet-5-5"]
+tier = "standard"           # local | standard | frontier
+input_rate = 10000          # sats per 1M input tokens
+output_rate = 30000         # sats per 1M output tokens
+base_fee = 1                # sats per request
+```
+
+A local mesh-llm node needs no key and costs nothing:
 
 ```toml
 [[providers]]
 name = "mesh-local"
 url = "http://host.docker.internal:9337/v1"
 auto_discover = true
-tier = "local"              # local | standard | frontier
-input_rate = 0              # sats per 1M input tokens
-output_rate = 0             # sats per 1M output tokens
+tier = "local"
+input_rate = 0
+output_rate = 0
 ```
 
 ### Live market feed (`[tokenstats]`) — optional, recommended
@@ -125,7 +171,7 @@ poll_interval_secs = 60
 
 [tokenstats.keys]
 openrouter = "${OPENROUTER_API_KEY}"
-# "node-provider-id" = "${CASHU_OR_API_KEY}"
+# "node-provider-id" = "${ROUTSTR_API_KEY}"
 ```
 
 Inspect routing readiness:
@@ -137,12 +183,26 @@ curl -s http://localhost:8080/providers | jq '.market'
 
 Full options (policies, rate limiting, auth, vault): [arbstr core README](https://github.com/johnzilla/arbstr#configuration).
 
-## Without Vault (Free Proxy Mode)
-
-To run arbstr core standalone without billing, remove the `[vault]` section from `config.toml` and run just the core service:
+## Updating
 
 ```bash
-docker compose up core
+# config.toml edits: recreate (not restart) — the file is bind-mounted, and
+# editors that replace the file leave a restarted container on the old copy
+docker compose up -d --force-recreate core
+
+# New core release (CI publishes :latest and :<sha> on every merge to main)
+docker compose pull core && docker compose up -d core
+
+# New vault version (after bumping the vault submodule)
+docker compose build vault && docker compose up -d vault
+```
+
+## Without Vault (Free Proxy Mode)
+
+To run arbstr core standalone without billing, remove the `[vault]` section from `config.toml` and start core without its dependencies. Requests then need no agent token.
+
+```bash
+docker compose up -d --no-deps core
 ```
 
 ## Working on this repo

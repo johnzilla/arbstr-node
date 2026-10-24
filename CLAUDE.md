@@ -8,10 +8,10 @@ This is a **meta-repo** that composes a full-stack inference marketplace from fo
 
 - `./` (root) — `docker-compose.yml`, `config.toml` (arbstr core config), `.env.example`. Orchestration only.
 - `./vault/` — **git submodule** of [`arbstr-vault`](https://github.com/johnzilla/arbstr-vault) (Node.js/TypeScript/Fastify treasury service). This is where nearly all service code changes happen. **Commits to vault code go to the `arbstr-vault` repo, not this one.** This repo only records the pinned commit SHA via `.gitmodules`.
-- **core** — pulled as `ghcr.io/johnzilla/arbstr:latest`. Rust routing engine. Source lives in [`johnzilla/arbstr`](https://github.com/johnzilla/arbstr), **not in this repo**. Don't look for Rust source here.
+- **core** — pulled as `ghcr.io/johnzilla/arbstr:latest`. Rust routing engine. Source lives in [`johnzilla/arbstr`](https://github.com/johnzilla/arbstr), **not in this repo**. Don't look for Rust source here. CI in that repo publishes `:latest` and `:<short-sha>` (amd64 + arm64) on every merge to main.
 - **lnd** / **mint** — third-party images (`lightninglabs/lnd`, `cashubtc/nutshell`).
 
-The untracked `vault/` in the parent directory (`/home/john/vault/projects/`) is unrelated — it's the user's personal projects vault, not this repo's `./vault/`.
+The `vault` directory that contains this checkout's parent (`~/Desktop/vault/projects/`) is unrelated — it's the user's personal projects folder, not this repo's `./vault/`.
 
 ### Submodule workflow
 
@@ -26,6 +26,7 @@ Bump vault to a newer upstream commit:
 ```bash
 git submodule update --remote vault
 git add vault && git commit -m "build: bump vault submodule"
+docker compose build vault && docker compose up -d vault   # deploy it
 ```
 
 Working on vault code: `cd vault`, make edits, commit & push to `arbstr-vault` (origin is already set). Then back at the root, `git add vault` + commit to record the new pinned SHA here.
@@ -38,8 +39,9 @@ Working on vault code: `cd vault`, make edits, commit & push to `arbstr-vault` (
 cp .env.example .env                 # set VAULT_ADMIN_TOKEN and VAULT_INTERNAL_TOKEN (both ≥32 chars)
 docker compose up -d                 # start core, vault, lnd, mint
 docker compose logs -f core          # follow core logs
-docker compose restart core          # pick up config.toml edits (mounted read-only)
-docker compose up core               # free-proxy mode: run core alone, no vault
+docker compose up -d --force-recreate core   # pick up config.toml edits (see below)
+docker compose pull core && docker compose up -d core   # deploy a new core release
+docker compose up -d --no-deps core  # free-proxy mode (after removing [vault] from config.toml)
 ```
 
 Health probes: `curl localhost:8080/health` (core), `curl localhost:3010/health` (vault — compose remaps host 3010 → container 3000).
@@ -75,22 +77,24 @@ client → core:8080 ──(reserve)──► vault:3000 ──► LND / Nutshel
          └─► provider (mesh-llm / Routstr / any OpenAI-compatible URL)
 ```
 
-1. Request hits **core** (OpenAI-compatible proxy, port 8080).
-2. Core calls **vault** `/internal/reserve` to debit buyer's agent balance (default 4096 tokens — see `[vault]` in `config.toml`).
+1. Request hits **core** (OpenAI-compatible proxy, port 8080) with the agent's bearer token.
+2. Core calls **vault** `/internal/reserve` with an estimate at frontier rates (4096 output tokens when the client sends no `max_tokens` — see `[vault]` in `config.toml`). Vault applies the agent's policy (per-request max, daily limit) and returns 403 with a `reason` on denial. New agents have a deny-all policy until `PATCH /operator/agents/:id/policy` sets limits.
 3. Core picks cheapest qualified **routable** provider from static `[[providers]]` and/or live `[tokenstats]` quotes (rates in **sats per 1M** tokens). Market sources need keys in `[tokenstats.keys]`; see `GET /providers` → `market.skipped`.
 4. Response streams back; core calls `/internal/settle` (actual cost) or `/internal/release` (unused).
-5. Seller payout goes back through vault to Lightning.
+5. Vault releases any reservation core never settled once it is older than `BILLING_RESERVATION_TTL_MS` (15 min).
+
+Seller payout is not built — vault only meters buyer spend.
 
 **Trust boundary:** core ↔ vault is a shared-secret `X-Internal-Token` (`VAULT_INTERNAL_TOKEN`, constant-time compare). Admin routes use a separate bearer token (`VAULT_ADMIN_TOKEN`). Agent routes use per-agent bearer tokens returned at registration.
 
-**Service dependencies in `docker-compose.yml`:** `lnd` + `mint` must be healthy → `vault` starts → `vault` healthy → `core` starts. Edits to `config.toml` only affect core (bind-mounted read-only), so `docker compose restart core` is the right cycle.
+**Service dependencies in `docker-compose.yml`:** `lnd` + `mint` must be healthy → `vault` starts → `vault` healthy → `core` starts. Edits to `config.toml` only affect core. It is a single-file bind mount, so use `docker compose up -d --force-recreate core`: `restart` keeps the old file if the editor replaced it (as `sed -i` and many editors do).
 
 ## Vault architecture (./vault/src/)
 
 **Factory pattern with dependency injection** — this is load-bearing, don't bypass it:
 
 - `app.ts` → `buildApp({ db?, wallet?, cashuWallet?, loggerStream? })` builds the Fastify instance. DB and wallet are decorated onto `app` (`app.db`, `app.paymentsService`). Routes **must** read `app.paymentsService`, never import it directly. Tests use in-memory SQLite + simulated wallet through this same factory.
-- `index.ts` is the production entrypoint: runs migrations, dynamically imports lightning/cashu backends (lazy — avoids loading unused packages), calls `buildApp`, starts a 30s interval for approval timeouts. **Never connect to LND inside `buildApp`** — do it in `index.ts` and pass the wallet in. Test runs should never touch that interval.
+- `index.ts` is the production entrypoint: runs migrations, dynamically imports lightning/cashu backends (lazy — avoids loading unused packages), calls `buildApp`, starts a 30s interval for approval timeouts and a 60s sweeper for stale billing reservations. **Never connect to LND inside `buildApp`** — do it in `index.ts` and pass the wallet in. Test runs should never touch that interval.
 
 **Ledger pattern — RESERVE / RELEASE / PAYMENT entries.** Async wallet calls (LN) can crash between "decided to pay" and "paid." The ledger writes a `RESERVE` before the wallet call and a `PAYMENT` (on success) or `RELEASE` (on failure/release) after. Balance = sum of all entries. This is how crash recovery works — **do not "simplify" by skipping the reserve step.**
 
@@ -104,6 +108,4 @@ client → core:8080 ──(reserve)──► vault:3000 ──► LND / Nutshel
 
 **Validation**: Zod v4 schemas via `fastify-type-provider-zod`. Config is parsed once in `src/config.ts` with cross-field refinements (LND vars required iff `WALLET_BACKEND` is `lightning`/`auto`; similar for Cashu). Import-time validation — misconfiguration is caught at startup, not request time.
 
-## Planning artifacts
-
-`vault/.planning/` contains the GSD workflow artifacts (milestones, phases, plans, research). These are history and design context — they are **not** live docs. Prefer reading the current code over planning files for architectural questions, but check `vault/.planning/research/ARCHITECTURE.md` and phase `SUMMARY.md` files for the "why" behind non-obvious decisions.
+**Node version**: vault needs Node 22 (the Docker image uses `node:22-slim`); `better-sqlite3` does not build on newer majors.
