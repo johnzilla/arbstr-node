@@ -123,6 +123,9 @@ If core never settles a reservation (for example, it crashed mid-request), vault
 | `WALLET_BACKEND` | No | Vault payment rail: `simulated` (default), `lightning`, `cashu`, or `auto` |
 | `LND_CERT_BASE64` / `LND_MACAROON_BASE64` | If `lightning`/`auto` | LND credentials for vault |
 | `CASHU_THRESHOLD_MSAT` | No | Below: Cashu (instant). Above: Lightning. Default 1M msats |
+| `OPERATOR_WEBHOOK_URL` | No | Where vault POSTs operator events (approval requests and outcomes, withdrawal requests, balance alerts) |
+| `OPERATOR_WEBHOOK_SECRET` | No | HMAC-SHA256 key (min 16 chars) for the `X-ArbstrVault-Signature` header; unsigned if unset |
+| `BILLING_RESERVATION_TTL_MS` | No | Age at which vault releases a reservation core never settled. Default 900000 (15 min), min 60000 |
 | `RUST_LOG` | No | Core log level. Default `arbstr=info` |
 | `OPENROUTER_API_KEY` | No | For `[tokenstats.keys] openrouter` / OpenRouter routes |
 | `ROUTSTR_API_KEY` | No | Cashu or API key for a static Routstr provider |

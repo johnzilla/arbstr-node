@@ -75,6 +75,11 @@ services:
       - CASHU_THRESHOLD_MSAT=${CASHU_THRESHOLD_MSAT:-1000000}
       - VAULT_ADMIN_TOKEN=${VAULT_ADMIN_TOKEN}
       - VAULT_INTERNAL_TOKEN=${VAULT_INTERNAL_TOKEN}
+      # Optional — bare names pass the value from .env only when it is set.
+      # (Vault rejects empty strings for these, so ${VAR:-} would break startup.)
+      - OPERATOR_WEBHOOK_URL
+      - OPERATOR_WEBHOOK_SECRET
+      - BILLING_RESERVATION_TTL_MS
     ports:
       - "3010:3000"
     volumes:
