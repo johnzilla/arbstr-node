@@ -55,5 +55,16 @@ pending_threshold = 100
 # output_rate = 30000  # sats per 1M output tokens
 # base_fee = 1
 
+[[providers]]
+name = "anthropic"
+url = "https://api.anthropic.com/v1"
+api_key = "${ARBSTR_ANTHROPIC_API_KEY}"
+models = ["claude-sonnet-5-5"]
+tier = "frontier"
+auto_discover = false
+input_rate = 10000   # sats per 1M input tokens
+output_rate = 30000  # sats per 1M output tokens
+base_fee = 1
+
 [policies]
 default_strategy = "cheapest"

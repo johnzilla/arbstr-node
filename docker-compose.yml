@@ -97,6 +97,7 @@ services:
       # Optional keys for static providers / [tokenstats.keys] (${VAR} expansion)
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - ROUTSTR_API_KEY=${ROUTSTR_API_KEY:-}
+      - ARBSTR_ANTHROPIC_API_KEY=${ARBSTR_ANTHROPIC_API_KEY:-}
 
     ports:
       - "8080:8080"
