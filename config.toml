@@ -26,7 +26,7 @@ pending_threshold = 100
 # # source = "routstr"   # optional filter; omit = all sources
 # [tokenstats.keys]
 # openrouter = "${OPENROUTER_API_KEY}"
-# # "node-provider-id" = "${CASHU_OR_API_KEY}"
+# # "node-provider-id" = "${ROUTSTR_API_KEY}"
 
 # ---------------------------------------------------------------------------
 # Static providers (always available). Rates are sats per **1M** tokens.

@@ -22,7 +22,7 @@ It turns your local machine (or server) into a smart proxy that:
 - Accepts OpenAI-compatible requests
 - Automatically routes each request to the cheapest suitable **routable** provider (local models, Routstr/OpenRouter via config or live [tokenstats](https://tokenstats.ai), or custom endpoints)
 - Prices in **sats per 1M tokens** (RIP-05); optional live market feed for multi-source quotes
-- Handles payment reservation, settlement, and payouts in Bitcoin sats (via Lightning and Cashu)
+- Meters each request against an agent's balance in sats: vault reserves the estimated cost, enforces per-request and daily limits, and settles the actual cost (paying providers out of collected funds is not built yet)
 
 Perfect for running your own mini inference marketplace or just getting cheap + private LLM access.
 
@@ -44,7 +44,7 @@ Without it, only static `[[providers]]` in `config.toml` are used.
 **No — payments are optional.**
 
 You can run it in **free proxy mode** (no vault) for pure routing.  
-Enable the vault + Lightning/Cashu when you want real sats-based arbitrage and provider payouts.
+With vault enabled, the stack defaults to `WALLET_BACKEND=simulated`: agent balances and billing work, but no real funds move. Switch to `lightning`, `cashu`, or `auto` only when you want real sats.
 
 </details>
 
@@ -59,6 +59,6 @@ cp .env.example .env
 docker compose up -d
 ```
 
-See the [README](./README.md) for full configuration, tokenstats setup, and free-proxy mode.
+Then create an agent, fund it, and set its spending policy before sending requests — see [Create an agent](./README.md#create-an-agent) in the README. The README also covers configuration, tokenstats setup, updates, and free-proxy mode.
 
 </details>

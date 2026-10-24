@@ -11,6 +11,11 @@
 #   docker compose up -d           # start all services
 #   docker compose logs -f core    # follow core logs
 #   docker compose down            # stop all services
+#
+# Updating:
+#   docker compose up -d --force-recreate core           # after editing config.toml
+#   docker compose pull core && docker compose up -d core  # new core release
+#   docker compose build vault && docker compose up -d vault  # after a vault submodule bump
 
 services:
   # Lightning Network daemon (regtest for development)
@@ -92,7 +97,6 @@ services:
     image: ghcr.io/johnzilla/arbstr:latest
     environment:
       - RUST_LOG=${RUST_LOG:-arbstr=info}
-      - ARBSTR_CONFIG=/config/config.toml
       - VAULT_INTERNAL_TOKEN=${VAULT_INTERNAL_TOKEN}
       # Optional keys for static providers / [tokenstats.keys] (${VAR} expansion)
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
