@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository shape
 
-This is a **meta-repo** that composes a full-stack inference marketplace from four services. **No service source lives here** — it is orchestration only, and every service runs from a published image pinned to a release:
+This is a **meta-repo** that composes the full arbstr stack (sats-metered inference routing) from four services. **No service source lives here** — it is orchestration only, and every service runs from a published image pinned to a release:
 
 - `./` (root) — `docker-compose.yml`, `config.toml` (arbstr core config), `.env.example`.
 - **core** — `ghcr.io/johnzilla/arbstr:<version>`. Rust routing engine; source and releases in [`johnzilla/arbstr`](https://github.com/johnzilla/arbstr).
