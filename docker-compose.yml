@@ -12,10 +12,10 @@
 #   docker compose logs -f core    # follow core logs
 #   docker compose down            # stop all services
 #
-# Updating:
+# Versions: core and vault are pinned to releases below; each arbstr-node
+# release lists them. To upgrade, change the tag and run:
+#   docker compose pull && docker compose up -d
 #   docker compose up -d --force-recreate core           # after editing config.toml
-#   docker compose pull core && docker compose up -d core  # new core release
-#   docker compose build vault && docker compose up -d vault  # after a vault submodule bump
 
 services:
   # Lightning Network daemon (regtest for development)
@@ -60,9 +60,8 @@ services:
 
   # arbstr vault — treasury service (agent accounts, payments, policy)
   vault:
-    build:
-      context: ./vault
-      dockerfile: Dockerfile
+    # https://github.com/johnzilla/arbstr-vault/releases
+    image: ghcr.io/johnzilla/arbstr-vault:1.2.0
     environment:
       - PORT=3000
       - DATABASE_PATH=/data/vault.db
@@ -99,7 +98,8 @@ services:
 
   # arbstr core — routing engine
   core:
-    image: ghcr.io/johnzilla/arbstr:latest
+    # https://github.com/johnzilla/arbstr/releases
+    image: ghcr.io/johnzilla/arbstr:2.1.0
     environment:
       - RUST_LOG=${RUST_LOG:-arbstr=info}
       - VAULT_INTERNAL_TOKEN=${VAULT_INTERNAL_TOKEN}

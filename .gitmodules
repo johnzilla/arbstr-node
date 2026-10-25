@@ -1,3 +1,0 @@
-[submodule "vault"]
-	path = vault
-	url = https://github.com/johnzilla/arbstr-vault.git

@@ -26,6 +26,19 @@ One `docker compose up` brings up the complete stack: routing engine, treasury, 
 | **lnd** | 10009 (gRPC), 8180 (REST) | Lightning Network daemon |
 | **mint** | 3338 | Nutshell Cashu mint (self-hosted) |
 
+## Versions
+
+Each arbstr-node release pins exact versions of every service; see [Releases](https://github.com/johnzilla/arbstr-node/releases) for what each one ships.
+
+| Service | Image | Source |
+|---------|-------|--------|
+| core | `ghcr.io/johnzilla/arbstr:2.1.0` | [arbstr](https://github.com/johnzilla/arbstr/releases) |
+| vault | `ghcr.io/johnzilla/arbstr-vault:1.2.0` | [arbstr-vault](https://github.com/johnzilla/arbstr-vault/releases) |
+| lnd | `lightninglabs/lnd:v0.20.1-beta` | [lnd](https://github.com/lightningnetwork/lnd) |
+| mint | `cashubtc/nutshell:0.20.0` | [nutshell](https://github.com/cashubtc/nutshell) |
+
+The arbstr images are multi-arch (amd64 + arm64) and carry signed build provenance: `gh attestation verify oci://ghcr.io/johnzilla/arbstr:2.1.0 --owner johnzilla`.
+
 ## FAQ
 
 [FAQ](FAQ.md) 
@@ -33,7 +46,7 @@ One `docker compose up` brings up the complete stack: routing engine, treasury, 
 ## Quick Start
 
 ```bash
-git clone --recurse-submodules https://github.com/johnzilla/arbstr-node.git
+git clone https://github.com/johnzilla/arbstr-node.git
 cd arbstr-node
 
 # Configure
@@ -206,11 +219,8 @@ Full options (policies, rate limiting, auth, vault): [arbstr core README](https:
 # editors that replace the file leave a restarted container on the old copy
 docker compose up -d --force-recreate core
 
-# New core release (CI publishes :latest and :<sha> on every merge to main)
-docker compose pull core && docker compose up -d core
-
-# New vault version (after bumping the vault submodule)
-docker compose build vault && docker compose up -d vault
+# New core or vault release: change its image tag in docker-compose.yml, then
+docker compose pull && docker compose up -d
 ```
 
 ## Without Vault (Free Proxy Mode)
@@ -223,7 +233,7 @@ docker compose up -d --no-deps core
 
 ## Working on this repo
 
-See [`CLAUDE.md`](./CLAUDE.md) for architecture notes, the submodule workflow, and common commands — written for agents but useful for human contributors too.
+See [`CLAUDE.md`](./CLAUDE.md) for architecture notes, the release workflow, and common commands — written for agents but useful for human contributors too.
 
 ## Related
 

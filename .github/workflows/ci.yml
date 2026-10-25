@@ -1,0 +1,62 @@
+# Validate the compose file on every PR and push to main. Pushing a signed
+# vX.Y.Z tag creates the GitHub Release, listing the exact images it ships.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ["v*.*.*"]
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - name: Compose file is valid
+        run: docker compose config --quiet
+        env:
+          # Placeholders so interpolation doesn't warn; nothing is started
+          VAULT_ADMIN_TOKEN: placeholder-admin-token-0123456789abcdef
+          VAULT_INTERNAL_TOKEN: placeholder-internal-token-0123456789ab
+      - name: Every image is pinned (no :latest)
+        run: |
+          images=$(docker compose config --images)
+          echo "$images"
+          if echo "$images" | grep -E ':latest$|^[^:]+$'; then
+            echo "::error::Pin every image to a version in docker-compose.yml"
+            exit 1
+          fi
+
+  release:
+    needs: validate
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - name: Create GitHub Release
+        run: |
+          # Backticks below are literal Markdown, not command substitution
+          # shellcheck disable=SC2016
+          {
+            echo "This release runs these images:"
+            echo
+            echo "| Image |"
+            echo "|---|"
+            docker compose config --images | sort | sed 's/.*/| `&` |/'
+            echo
+            echo "Verify an arbstr image's build provenance:"
+            echo '```'
+            echo "gh attestation verify oci://<image> --owner $GITHUB_REPOSITORY_OWNER"
+            echo '```'
+          } > notes.md
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --verify-tag \
+            --title "arbstr-node $GITHUB_REF_NAME" --generate-notes --notes-file notes.md
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VAULT_ADMIN_TOKEN: placeholder-admin-token-0123456789abcdef
+          VAULT_INTERNAL_TOKEN: placeholder-internal-token-0123456789ab
