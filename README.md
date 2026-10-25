@@ -41,6 +41,7 @@ cp .env.example .env
 # Edit .env:
 #   VAULT_ADMIN_TOKEN, VAULT_INTERNAL_TOKEN — generate each with: openssl rand -hex 32
 #   ARBSTR_ANTHROPIC_API_KEY — key for the Anthropic provider in config.toml
+#   ARBSTR_OPERATOR_TOKEN — optional; enables core's request log and stats endpoints
 #   MINT_PRIVATE_KEY — replace the placeholder
 # Optionally edit config.toml to add providers or enable [tokenstats]
 
@@ -92,6 +93,17 @@ curl http://localhost:8080/v1/chat/completions \
 
 Set `max_tokens`. Without it, core reserves for 4,096 output tokens at frontier rates, which can exceed the agent's per-request limit. A request the policy refuses returns `403` with an `error.reason` such as `exceeds_max_transaction` or `exceeds_daily_limit`.
 
+### Request logs and stats
+
+Core's `/v1/requests` (request log) and `/v1/stats` (cost and latency stats) cover every agent's traffic, so they take a separate operator token, not an agent token. Set `ARBSTR_OPERATOR_TOKEN` in `.env` (e.g. `openssl rand -hex 32`) and recreate core:
+
+```bash
+docker compose up -d --force-recreate core
+curl -s http://localhost:8080/v1/stats -H "Authorization: Bearer $ARBSTR_OPERATOR_TOKEN"
+```
+
+Until it is set, both return `401 operator_token_not_configured`. `/v1/models` and `/v1/cost` take the agent token, like chat completions.
+
 ## How It Works
 
 ```
@@ -119,6 +131,7 @@ If core never settles a reservation (for example, it crashed mid-request), vault
 | `VAULT_ADMIN_TOKEN` | Yes | Operator admin token for vault (min 32 chars) |
 | `VAULT_INTERNAL_TOKEN` | Yes | Shared secret between core and vault (min 32 chars) |
 | `ARBSTR_ANTHROPIC_API_KEY` | For Anthropic | Key for the `anthropic` provider in `config.toml` |
+| `ARBSTR_OPERATOR_TOKEN` | No | Bearer token for core's `/v1/stats` and `/v1/requests`. While unset, they refuse every request |
 | `MINT_PRIVATE_KEY` | No | Cashu mint key. Defaults to an insecure placeholder; set your own |
 | `WALLET_BACKEND` | No | Vault payment rail: `simulated` (default), `lightning`, `cashu`, or `auto` |
 | `LND_CERT_BASE64` / `LND_MACAROON_BASE64` | If `lightning`/`auto` | LND credentials for vault |

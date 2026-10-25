@@ -3,6 +3,9 @@
 
 [server]
 listen = "0.0.0.0:8080"
+# Bearer token for /v1/stats and /v1/requests (every agent's traffic).
+# Set ARBSTR_OPERATOR_TOKEN in .env; while it is unset these endpoints refuse all requests.
+operator_token = "${ARBSTR_OPERATOR_TOKEN}"
 
 [database]
 path = "/data/arbstr.db"

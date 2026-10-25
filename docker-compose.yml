@@ -107,6 +107,8 @@ services:
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - ROUTSTR_API_KEY=${ROUTSTR_API_KEY:-}
       - ARBSTR_ANTHROPIC_API_KEY=${ARBSTR_ANTHROPIC_API_KEY:-}
+      # Empty when unset: core treats an empty operator_token as unset (analytics refused)
+      - ARBSTR_OPERATOR_TOKEN=${ARBSTR_OPERATOR_TOKEN:-}
 
     ports:
       - "8080:8080"
