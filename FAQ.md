@@ -52,7 +52,7 @@ With vault enabled, the stack defaults to `WALLET_BACKEND=simulated`: agent bala
 <summary>How do I get started?</summary>
 
 ```bash
-git clone --recurse-submodules https://github.com/johnzilla/arbstr-node.git
+git clone https://github.com/johnzilla/arbstr-node.git
 cd arbstr-node
 cp .env.example .env
 # Edit .env and config.toml

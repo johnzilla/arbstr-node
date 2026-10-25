@@ -4,32 +4,27 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository shape
 
-This is a **meta-repo** that composes a full-stack inference marketplace from four services. Only one of them has source here:
+This is a **meta-repo** that composes a full-stack inference marketplace from four services. **No service source lives here** — it is orchestration only, and every service runs from a published image pinned to a release:
 
-- `./` (root) — `docker-compose.yml`, `config.toml` (arbstr core config), `.env.example`. Orchestration only.
-- `./vault/` — **git submodule** of [`arbstr-vault`](https://github.com/johnzilla/arbstr-vault) (Node.js/TypeScript/Fastify treasury service). This is where nearly all service code changes happen. **Commits to vault code go to the `arbstr-vault` repo, not this one.** This repo only records the pinned commit SHA via `.gitmodules`.
-- **core** — pulled as `ghcr.io/johnzilla/arbstr:latest`. Rust routing engine. Source lives in [`johnzilla/arbstr`](https://github.com/johnzilla/arbstr), **not in this repo**. Don't look for Rust source here. CI in that repo publishes `:latest` and `:<short-sha>` (amd64 + arm64) on every merge to main.
+- `./` (root) — `docker-compose.yml`, `config.toml` (arbstr core config), `.env.example`.
+- **core** — `ghcr.io/johnzilla/arbstr:<version>`. Rust routing engine; source and releases in [`johnzilla/arbstr`](https://github.com/johnzilla/arbstr).
+- **vault** — `ghcr.io/johnzilla/arbstr-vault:<version>`. Node.js/TypeScript/Fastify treasury; source and releases in [`johnzilla/arbstr-vault`](https://github.com/johnzilla/arbstr-vault). **Vault code changes go to that repo**, not this one.
 - **lnd** / **mint** — third-party images (`lightninglabs/lnd`, `cashubtc/nutshell`).
 
-The `vault` directory that contains this checkout's parent (`~/Desktop/vault/projects/`) is unrelated — it's the user's personal projects folder, not this repo's `./vault/`.
+The `vault` directory that contains this checkout's parent (`~/Desktop/vault/projects/`) is unrelated — it's the user's personal projects folder.
 
-### Submodule workflow
+### Versions and releases
 
-Fresh clone must init submodules or vault will be empty:
+Each arbstr-node release pins exact image versions in `docker-compose.yml`, and its GitHub Release notes list them. Core and vault version independently (semver, signed tags, GitHub Releases with build provenance — see their DEVELOPMENT.md / README). To move the stack to a new core or vault release:
+
 ```bash
-git clone --recurse-submodules <repo>
-# or, after a plain clone:
-git submodule update --init
+# 1. Edit the image tag in docker-compose.yml (Dependabot also proposes these weekly)
+# 2. Deploy and verify
+docker compose pull && docker compose up -d
+# 3. Commit; cut an arbstr-node release (signed tag vX.Y.Z) when the set is worth shipping
 ```
 
-Bump vault to a newer upstream commit:
-```bash
-git submodule update --remote vault
-git add vault && git commit -m "build: bump vault submodule"
-docker compose build vault && docker compose up -d vault   # deploy it
-```
-
-Working on vault code: `cd vault`, make edits, commit & push to `arbstr-vault` (origin is already set). Then back at the root, `git add vault` + commit to record the new pinned SHA here.
+Verify a pinned image's provenance: `gh attestation verify oci://ghcr.io/johnzilla/arbstr:<version> --owner johnzilla`.
 
 ## Common commands
 
@@ -40,34 +35,14 @@ cp .env.example .env                 # set VAULT_ADMIN_TOKEN and VAULT_INTERNAL_
 docker compose up -d                 # start core, vault, lnd, mint
 docker compose logs -f core          # follow core logs
 docker compose up -d --force-recreate core   # pick up config.toml edits (see below)
-docker compose pull core && docker compose up -d core   # deploy a new core release
 docker compose up -d --no-deps core  # free-proxy mode (after removing [vault] from config.toml)
 ```
 
 Health probes: `curl localhost:8080/health` (core), `curl localhost:3010/health` (vault — compose remaps host 3010 → container 3000).
 
-### Vault development (cd vault/)
+### Vault development
 
-```bash
-npm install
-npm run db:migrate                   # apply drizzle migrations
-npm run dev                          # tsx watch, WALLET_BACKEND=simulated by default
-npm test                             # vitest run (uses in-memory SQLite, test tokens)
-npm run test:watch
-npm run db:generate                  # regenerate migrations after src/db/schema.ts changes
-```
-
-Run a single test file or pattern:
-```bash
-npx vitest run tests/integration/lightning.test.ts
-npx vitest run -t "reserve releases on failure"
-```
-
-Regtest Lightning + Cashu environment for `WALLET_BACKEND=lightning|auto`:
-```bash
-docker compose -f docker-compose.dev.yml up -d     # bitcoind + lnd-alice + lnd-bob + nutshell
-# Manual channel setup steps are commented at the top of docker-compose.dev.yml
-```
+Happens in a checkout of [`arbstr-vault`](https://github.com/johnzilla/arbstr-vault), not here (Node 22, `npm test`, `npm run dev`; see its README). To try an unreleased vault in this stack, point `vault.image` at its `:<short-sha>` tag (published on every merge to its main) and switch back to a release before committing.
 
 ## Service boundaries and data flow
 
@@ -89,7 +64,7 @@ Seller payout is not built — vault only meters buyer spend.
 
 **Service dependencies in `docker-compose.yml`:** `lnd` + `mint` must be healthy → `vault` starts → `vault` healthy → `core` starts. Edits to `config.toml` only affect core. It is a single-file bind mount, so use `docker compose up -d --force-recreate core`: `restart` keeps the old file if the editor replaced it (as `sed -i` and many editors do).
 
-## Vault architecture (./vault/src/)
+## Vault architecture (arbstr-vault `src/`)
 
 **Factory pattern with dependency injection** — this is load-bearing, don't bypass it:
 

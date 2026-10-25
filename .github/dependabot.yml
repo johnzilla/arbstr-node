@@ -1,0 +1,18 @@
+version: 2
+updates:
+  # Propose new image versions (core, vault, lnd, nutshell) as one weekly PR.
+  # Nothing upgrades on its own: each bump is a reviewable compose change.
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      images:
+        patterns: ["*"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      github-actions:
+        patterns: ["*"]
