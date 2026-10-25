@@ -61,6 +61,7 @@ pending_threshold = 100
 # output_rate = 30000  # sats per 1M output tokens
 # base_fee = 1
 
+# Anthropic's OpenAI-compatible endpoint (/v1/chat/completions), not its native Messages API
 [[providers]]
 name = "anthropic"
 url = "https://api.anthropic.com/v1"
