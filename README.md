@@ -28,16 +28,16 @@ One `docker compose up` brings up the complete stack: routing engine, treasury, 
 
 ## Versions
 
-Each arbstr-node release pins exact versions of every service; see [Releases](https://github.com/johnzilla/arbstr-node/releases) for what each one ships.
+Every service runs a pinned image version. The exact versions live in one place, [`docker-compose.yml`](./docker-compose.yml), and each [arbstr-node release](https://github.com/johnzilla/arbstr-node/releases) lists the set it ships. `docker compose config --images` prints them for your checkout.
 
-| Service | Image | Source |
-|---------|-------|--------|
-| core | `ghcr.io/johnzilla/arbstr:2.1.0` | [arbstr](https://github.com/johnzilla/arbstr/releases) |
-| vault | `ghcr.io/johnzilla/arbstr-vault:1.2.0` | [arbstr-vault](https://github.com/johnzilla/arbstr-vault/releases) |
-| lnd | `lightninglabs/lnd:v0.20.1-beta` | [lnd](https://github.com/lightningnetwork/lnd) |
-| mint | `cashubtc/nutshell:0.20.0` | [nutshell](https://github.com/cashubtc/nutshell) |
+| Service | Image | Releases |
+|---------|-------|----------|
+| core | `ghcr.io/johnzilla/arbstr` | [arbstr](https://github.com/johnzilla/arbstr/releases) |
+| vault | `ghcr.io/johnzilla/arbstr-vault` | [arbstr-vault](https://github.com/johnzilla/arbstr-vault/releases) |
+| lnd | `lightninglabs/lnd` | [lnd](https://github.com/lightningnetwork/lnd/releases) |
+| mint | `cashubtc/nutshell` | [nutshell](https://github.com/cashubtc/nutshell/releases) |
 
-The arbstr images are multi-arch (amd64 + arm64) and carry signed build provenance: `gh attestation verify oci://ghcr.io/johnzilla/arbstr:2.1.0 --owner johnzilla`.
+The arbstr images are multi-arch (amd64 + arm64) and carry signed build provenance: `gh attestation verify oci://ghcr.io/johnzilla/arbstr:<version> --owner johnzilla`. Dependabot proposes new versions as weekly PRs; nothing upgrades on its own.
 
 ## FAQ
 
@@ -235,11 +235,13 @@ docker compose up -d --no-deps core
 
 See [`CLAUDE.md`](./CLAUDE.md) for architecture notes, the release workflow, and common commands — written for agents but useful for human contributors too.
 
-## Related
+## Related Projects
 
-- [arbstr](https://github.com/johnzilla/arbstr) — Routing engine
-- [arbstr-vault](https://github.com/johnzilla/arbstr-vault) — Treasury service
-- [mesh-llm](https://docs.anarchai.org/) — Block's distributed inference network
+- [arbstr](https://github.com/johnzilla/arbstr) -- Routing engine: OpenAI-compatible proxy that picks the cheapest qualified provider
+- [arbstr-vault](https://github.com/johnzilla/arbstr-vault) -- Treasury: agent accounts, spending policy, per-request billing, Lightning and Cashu rails
+- [arbstr-node](https://github.com/johnzilla/arbstr-node) -- The full stack (core + vault + LND + Cashu mint) as one `docker compose up`, pinned to released versions
+- [mesh-llm](https://docs.anarchai.org) -- Distributed P2P inference network (local provider)
+- [Routstr](https://routstr.com) -- Decentralized LLM marketplace
 
 ## License
 
