@@ -1,6 +1,6 @@
 # arbstr node
 
-Full-stack deployment of the [arbstr](https://arbstr.com) inference marketplace.
+Full-stack deployment of [arbstr](https://arbstr.com): the cheapest route to any model, metered in sats.
 
 One `docker compose up` brings up the complete stack: routing engine, treasury, Lightning, and Cashu mint.
 

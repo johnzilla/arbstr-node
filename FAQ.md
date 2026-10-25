@@ -3,7 +3,7 @@
 <details>
 <summary>What is arbstr-node?</summary>
 
-arbstr-node is the full-stack, one-command deployment for the Arbstr inference marketplace.
+arbstr-node is the full-stack, one-command deployment of arbstr: the cheapest route to any model, metered in sats.
 
 It brings together:
 - **arbstr core** (OpenAI-compatible routing + arbitrage engine)
@@ -24,7 +24,7 @@ It turns your local machine (or server) into a smart proxy that:
 - Prices in **sats per 1M tokens** (RIP-05); optional live market feed for multi-source quotes
 - Meters each request against an agent's balance in sats: vault reserves the estimated cost, enforces per-request and daily limits, and settles the actual cost (paying providers out of collected funds is not built yet)
 
-Perfect for running your own mini inference marketplace or just getting cheap + private LLM access.
+Useful for metering your own agents' LLM spend in sats, or just getting cheap + private LLM access. Selling your own compute to others isn't supported yet.
 
 </details>
 
