@@ -28,9 +28,11 @@ services:
       - --noseedbackup
       - --restlisten=0.0.0.0:8080
       - --rpclisten=0.0.0.0:10009
+    # Host ports are bound to 127.0.0.1: reachable from this machine only.
+    # Vault reaches lnd over the compose network and needs neither.
     ports:
-      - "10009:10009"  # gRPC
-      - "8180:8080"    # REST
+      - "127.0.0.1:10009:10009"  # gRPC
+      - "127.0.0.1:8180:8080"    # REST
     volumes:
       - lnd-data:/root/.lnd
     healthcheck:
@@ -48,9 +50,10 @@ services:
       - MINT_BACKEND_BOLT11_SAT=FakeWallet
       - MINT_LISTEN_HOST=0.0.0.0
       - MINT_LISTEN_PORT=3338
-      - MINT_PRIVATE_KEY=${MINT_PRIVATE_KEY:-supersecretprivatekey}
+      # Signs the mint's ecash: required, no default (a known key lets anyone mint)
+      - MINT_PRIVATE_KEY=${MINT_PRIVATE_KEY:?Set MINT_PRIVATE_KEY in .env (openssl rand -hex 32)}
     ports:
-      - "3338:3338"
+      - "127.0.0.1:3338:3338"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3338/v1/info"]
       interval: 10s
@@ -79,8 +82,10 @@ services:
       - OPERATOR_WEBHOOK_URL
       - OPERATOR_WEBHOOK_SECRET
       - BILLING_RESERVATION_TTL_MS
+    # Admin API (agents, deposits, approvals, audit): this machine only.
+    # For remote admin, use an SSH tunnel rather than widening this binding.
     ports:
-      - "3010:3000"
+      - "127.0.0.1:3010:3000"
     volumes:
       - vault-data:/data
     depends_on:

@@ -21,10 +21,12 @@ One `docker compose up` brings up the complete stack: routing engine, treasury, 
 
 | Service | Host port | Description |
 |---------|-----------|-------------|
-| **core** | 8080 | [arbstr](https://github.com/johnzilla/arbstr) routing engine — OpenAI-compatible proxy with cost/latency/capability arbitrage |
-| **vault** | 3010 | [arbstr-vault](https://github.com/johnzilla/arbstr-vault) treasury — agent sub-accounts, Cashu + Lightning payment rails, policy enforcement, audit log (container port 3000 remapped to host 3010) |
-| **lnd** | 10009 (gRPC), 8180 (REST) | Lightning Network daemon |
-| **mint** | 3338 | Nutshell Cashu mint (self-hosted) |
+| **core** | 8080 (all interfaces) | [arbstr](https://github.com/johnzilla/arbstr) routing engine — OpenAI-compatible proxy with cost/latency/capability arbitrage |
+| **vault** | 127.0.0.1:3010 | [arbstr-vault](https://github.com/johnzilla/arbstr-vault) treasury — agent sub-accounts, Cashu + Lightning payment rails, policy enforcement, audit log (container port 3000 remapped to host 3010) |
+| **lnd** | 127.0.0.1:10009 (gRPC), 127.0.0.1:8180 (REST) | Lightning Network daemon |
+| **mint** | 127.0.0.1:3338 | Nutshell Cashu mint (self-hosted) |
+
+Only core, the client-facing API, listens on the network; its endpoints require agent or operator tokens. Vault's admin API, LND and the mint are reachable only from this machine. To administer a remote node, tunnel instead of opening ports, e.g. `ssh -L 3010:127.0.0.1:3010 your-server`.
 
 ## Versions
 
@@ -55,7 +57,7 @@ cp .env.example .env
 #   VAULT_ADMIN_TOKEN, VAULT_INTERNAL_TOKEN — generate each with: openssl rand -hex 32
 #   ARBSTR_ANTHROPIC_API_KEY — key for the Anthropic provider in config.toml
 #   ARBSTR_OPERATOR_TOKEN — optional; enables core's request log and stats endpoints
-#   MINT_PRIVATE_KEY — replace the placeholder
+#   MINT_PRIVATE_KEY — required; compose refuses to start without it
 # Optionally edit config.toml to add providers or enable [tokenstats]
 
 # Start
@@ -145,7 +147,7 @@ If core never settles a reservation (for example, it crashed mid-request), vault
 | `VAULT_INTERNAL_TOKEN` | Yes | Shared secret between core and vault (min 32 chars) |
 | `ARBSTR_ANTHROPIC_API_KEY` | For Anthropic | Key for the `anthropic` provider in `config.toml` |
 | `ARBSTR_OPERATOR_TOKEN` | No | Bearer token for core's `/v1/stats` and `/v1/requests`. While unset, they refuse every request |
-| `MINT_PRIVATE_KEY` | No | Cashu mint key. Defaults to an insecure placeholder; set your own |
+| `MINT_PRIVATE_KEY` | Yes | Key that signs the mint's ecash (`openssl rand -hex 32`). No default; changing it invalidates ecash already issued |
 | `WALLET_BACKEND` | No | Vault payment rail: `simulated` (default), `lightning`, `cashu`, or `auto` |
 | `LND_CERT_BASE64` / `LND_MACAROON_BASE64` | If `lightning`/`auto` | LND credentials for vault |
 | `CASHU_THRESHOLD_MSAT` | No | Below: Cashu (instant). Above: Lightning. Default 1M msats |

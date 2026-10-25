@@ -13,14 +13,23 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: read
+    env:
+      # Placeholders so interpolation succeeds; nothing is started
+      VAULT_ADMIN_TOKEN: placeholder-admin-token-0123456789abcdef
+      VAULT_INTERNAL_TOKEN: placeholder-internal-token-0123456789ab
+      MINT_PRIVATE_KEY: placeholder-mint-key
     steps:
       - uses: actions/checkout@v7
       - name: Compose file is valid
         run: docker compose config --quiet
+      - name: Compose refuses to start without MINT_PRIVATE_KEY
+        run: |
+          if docker compose config --quiet 2>/dev/null; then
+            echo "::error::docker compose config succeeded without MINT_PRIVATE_KEY"
+            exit 1
+          fi
         env:
-          # Placeholders so interpolation doesn't warn; nothing is started
-          VAULT_ADMIN_TOKEN: placeholder-admin-token-0123456789abcdef
-          VAULT_INTERNAL_TOKEN: placeholder-internal-token-0123456789ab
+          MINT_PRIVATE_KEY: ""
       - name: Every image is pinned (no :latest)
         run: |
           images=$(docker compose config --images)
@@ -60,3 +69,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           VAULT_ADMIN_TOKEN: placeholder-admin-token-0123456789abcdef
           VAULT_INTERNAL_TOKEN: placeholder-internal-token-0123456789ab
+          MINT_PRIVATE_KEY: placeholder-mint-key
