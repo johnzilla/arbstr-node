@@ -30,8 +30,10 @@ pending_threshold = 100
 # # Market endpoints come from the feed and receive your keys: they must be https
 # # on one of these hosts (or a subdomain). Empty = no market endpoints.
 # allowed_hosts = ["openrouter.ai"]
+# # allowed_hosts = ["openrouter.ai", "api.orcarouter.ai"]   # to also route OrcaRouter
 # [tokenstats.keys]
 # openrouter = "${OPENROUTER_API_KEY}"
+# # orcarouter = "${ORCAROUTER_API_KEY}"   # OrcaRouter (zero-markup); needs its host above
 # # "node-provider-id" = "${ROUTSTR_API_KEY}"
 
 # ---------------------------------------------------------------------------

@@ -110,6 +110,7 @@ services:
       - VAULT_INTERNAL_TOKEN=${VAULT_INTERNAL_TOKEN}
       # Optional keys for static providers / [tokenstats.keys] (${VAR} expansion)
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - ORCAROUTER_API_KEY=${ORCAROUTER_API_KEY:-}
       - ROUTSTR_API_KEY=${ROUTSTR_API_KEY:-}
       - ARBSTR_ANTHROPIC_API_KEY=${ARBSTR_ANTHROPIC_API_KEY:-}
       # Empty when unset: core treats an empty operator_token as unset (analytics refused)
