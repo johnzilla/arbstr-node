@@ -199,6 +199,7 @@ Uncomment the `[tokenstats]` block in `config.toml` to poll [tokenstats](https:/
 [tokenstats]
 url = "https://tokenstats.ai"
 poll_interval_secs = 60
+allowed_hosts = ["openrouter.ai"]   # market endpoints must be https on these hosts to get your keys
 
 [tokenstats.keys]
 openrouter = "${OPENROUTER_API_KEY}"

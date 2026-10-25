@@ -27,6 +27,9 @@ pending_threshold = 100
 # stale_after_secs = 600
 # blend_ratio = 3.0
 # # source = "routstr"   # optional filter; omit = all sources
+# # Market endpoints come from the feed and receive your keys: they must be https
+# # on one of these hosts (or a subdomain). Empty = no market endpoints.
+# allowed_hosts = ["openrouter.ai"]
 # [tokenstats.keys]
 # openrouter = "${OPENROUTER_API_KEY}"
 # # "node-provider-id" = "${ROUTSTR_API_KEY}"
