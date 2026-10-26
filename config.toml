@@ -23,14 +23,17 @@ pending_threshold = 100
 # [tokenstats]
 # url = "https://tokenstats.ai"
 # poll_interval_secs = 60
-# min_reliability = 0.5
+# min_reliability = 0.5          # 24h success rate; nodes with no track record wait
 # stale_after_secs = 600
 # blend_ratio = 3.0
-# # source = "routstr"   # optional filter; omit = all sources
+# # source = "openrouter,routstr"   # override; default = the sources in [tokenstats.keys]
 # # Market endpoints come from the feed and receive your keys: they must be https
 # # on one of these hosts (or a subdomain). Empty = no market endpoints.
 # allowed_hosts = ["openrouter.ai"]
 # # allowed_hosts = ["openrouter.ai", "api.orcarouter.ai"]   # to also route OrcaRouter
+# # Only route to Routstr nodes whose npub matches their Nostr announcement
+# # (tokenstats identity_verified). Cashu tokens go to these nodes.
+# require_verified_identity = false
 # [tokenstats.keys]
 # openrouter = "${OPENROUTER_API_KEY}"
 # # orcarouter = "${ORCAROUTER_API_KEY}"   # OrcaRouter (zero-markup); needs its host above
