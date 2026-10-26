@@ -104,7 +104,7 @@ services:
   # arbstr core — routing engine
   core:
     # https://github.com/johnzilla/arbstr/releases
-    image: ghcr.io/johnzilla/arbstr:2.3.1
+    image: ghcr.io/johnzilla/arbstr:2.4.0
     environment:
       - RUST_LOG=${RUST_LOG:-arbstr=info}
       - VAULT_INTERNAL_TOKEN=${VAULT_INTERNAL_TOKEN}
